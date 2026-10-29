@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="en" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CipherNote - Private Encrypted Notes PWA</title>
+
+    <!-- Web App Manifest for PWA Installation -->
+    <link rel="manifest" href="data:application/manifest+json;utf8,%7B%22name%22%3A%22CipherNote%22%2C%22short_name%22%3A%22CipherNote%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23020617%22%2C%22theme_color%22%3A%22%230f172a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fplacehold.co%2F192x192%2F0f172a%2F10b981%3Ftext%3DCN%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%7D%2C%7B%22src%22%3A%22https%3A%2F%2Fplacehold.co%2F512x512%2F0f172a%2F10b981%3Ftext%3DCipherNote%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D">
+    <meta name="theme-color" content="#0f172a">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 850: '#111827', 900: '#0f172a', 950: '#020617' },
+                        emerald: { 400: '#34d399', 500: '#10b981', 600: '#059669' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Markdown (Marked.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- KaTeX for LaTeX Math Support -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+    <!-- Prism.js for Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+    <!-- diff-match-patch for Line Diffs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/diff-match-patch/20121119/diff_match_patch.js"></script>
+
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .prose h1 { font-size: 1.875rem; font-weight: 700; margin-top: 1rem; margin-bottom: 0.5rem; color: #f8fafc; border-bottom: 1px solid #334155; padding-bottom: 0.25rem; }
+        .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; color: #f1f5f9; }
+        .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 0.75rem; margin-bottom: 0.25rem; color: #e2e8f0; }
+        .prose p { margin-bottom: 0.75rem; line-height: 1.625; color: #cbd5e1; }
+        .prose ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.75rem; color: #cbd5e1; }
+        .prose ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 0.75rem; color: #cbd5e1; }
+        .prose blockquote { border-left: 4px solid #10b981; padding-left: 1rem; font-style: italic; color: #94a3b8; margin-bottom: 0.75rem; }
+        .prose table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+        .prose th, .prose td { border: 1px solid #334155; padding: 0.5rem; text-align: left; }
+        .prose th { background-color: #1e293b; color: #f8fafc; }
+        .prose input[type="checkbox"] { margin-right: 0.5rem; accent-color: #10b981; transform: scale(1.1); cursor: pointer; }
+
+        .diff-add { background-color: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .diff-del { background-color: rgba(244, 63, 94, 0.2); color: #fb7185; text-decoration: line-through; }
+
+        .code-block-wrapper { position: relative; margin-top: 1rem; margin-bottom: 1rem; border-radius: 0.75rem; overflow: hidden; border: 1px solid #334155; }
+        .code-block-header { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 0.4rem 0.8rem; font-size: 0.75rem; color: #94a3b8; font-family: monospace; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-full font-sans antialiased overflow-hidden selection:bg-emerald-500 selection:text-slate-950">
+
+    <!-- APP CONTAINER -->
+    <div id="app" class="h-full flex flex-col relative">
+
+        <!-- PWA UPDATE NOTIFICATION TOAST BANNER -->
+        <div id="pwaUpdateBanner" class="fixed bottom-4 right-4 z-50 bg-slate-900 border border-emerald-500/80 text-slate-100 p-4 rounded-2xl shadow-2xl flex items-center justify-between gap-4 transition-all transform translate-y-24 opacity-0 pointer-events-none max-w-md">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                    <i class="fa-solid fa-arrows-rotate animate-spin"></i>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold text-slate-100">App Update Available</h4>
+                    <p class="text-[11px] text-slate-400">A new version of CipherNote is ready.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="dismissUpdateBanner()" class="text-xs text-slate-500 hover:text-slate-300 px-2 py-1">Dismiss</button>
+                <button onclick="applyPwaUpdate()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold px-3 py-1.5 rounded-lg shadow transition">
+                    Reload & Update
+                </button>
+            </div>
+        </div>
+
+        <!-- LOCK / MASTER PASSCODE SCREEN -->
+        <div id="lockScreen" class="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-4">
+            <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
+                <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400"></div>
+
+                <div class="text-center mb-6">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-slate-800 rounded-2xl mb-3 border border-slate-700 text-emerald-400 text-2xl shadow-inner">
+                        <i class="fa-solid fa-user-shield"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold tracking-tight text-white">CipherNote</h1>
+                    <p class="text-xs text-slate-400 mt-1" id="lockSubtitle">Zero-Knowledge Encrypted Vault</p>
+                </div>
+
+                <form id="passcodeForm" class="space-y-4" onsubmit="handleAuthSubmit(event)">
+                    <div id="setupNotice" class="hidden text-xs bg-emerald-950/50 border border-emerald-800/60 text-emerald-300 p-3 rounded-lg mb-2">
+                        <i class="fa-solid fa-circle-info mr-1"></i> Set a strong Master Passcode. Data cannot be recovered without a backup file!
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-400">Master Passcode</label>
+                        <div class="relative">
+                            <input type="password" id="passcodeInput" autocomplete="current-password" required placeholder="Enter passcode..." 
+                                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 pr-10 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition text-sm">
+                            <button type="button" onclick="togglePasscodeVisibility('passcodeInput', 'passcodeIcon')" class="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300">
+                                <i id="passcodeIcon" class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="confirmPasscodeGroup" class="space-y-1 hidden">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-400">Confirm Passcode</label>
+                        <input type="password" id="confirmPasscodeInput" placeholder="Repeat passcode..." 
+                            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition text-sm">
+                    </div>
+
+                    <div id="authError" class="hidden text-xs text-rose-400 bg-rose-950/30 border border-rose-900/50 p-2.5 rounded-lg text-center"></div>
+
+                    <div class="space-y-2 pt-2">
+                        <button type="submit" id="authSubmitBtn" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-semibold py-3 px-4 rounded-xl shadow-lg transition transform active:scale-[0.99] flex items-center justify-center gap-2 text-sm">
+                            <i class="fa-solid fa-unlock"></i> <span id="authBtnText">Unlock Vault</span>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="mt-6 pt-4 border-t border-slate-800/80 flex justify-between items-center text-xs text-slate-500">
+                    <span><i class="fa-solid fa-lock text-emerald-500/70 mr-1"></i> AES-256-GCM</span>
+                    <button type="button" onclick="triggerRestoreBackup()" class="hover:text-emerald-400 transition underline">Restore Backup</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN APP INTERFACE -->
+        <div id="mainInterface" class="hidden h-full flex flex-col">
+            
+            <!-- HEADER BAR -->
+            <header class="h-14 bg-slate-900 border-b border-slate-800/80 flex items-center justify-between px-4 shrink-0">
+                <div class="flex items-center gap-3">
+                    <button id="toggleSidebarBtn" onclick="toggleSidebar()" class="p-2 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800 transition">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-shield-halved text-emerald-400 text-lg"></i>
+                        <span class="font-bold text-slate-100 tracking-tight hidden sm:inline">CipherNote</span>
+                    </div>
+                </div>
+
+                <!-- Action Bar for Current Note -->
+                <div id="noteHeaderActions" class="flex items-center gap-2">
+                    <button onclick="openDevToolsModal()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition" title="Developer Utilities">
+                        <i class="fa-solid fa-code"></i> <span class="hidden lg:inline">Dev Tools</span>
+                    </button>
+                    <button onclick="openTemplateModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition">
+                        <i class="fa-solid fa-wand-magic"></i> <span class="hidden md:inline">Template</span>
+                    </button>
+                    <button onclick="createNewNote()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs px-3 py-1.5 rounded-lg shadow flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">New Note</span>
+                    </button>
+                    <button onclick="toggleFavoriteCurrent()" id="favoriteBtn" class="p-2 text-slate-400 hover:text-amber-400 rounded-lg hover:bg-slate-800 transition" title="Toggle Favorite">
+                        <i class="fa-regular fa-star text-base"></i>
+                    </button>
+                    <button onclick="toggleZenMode()" class="p-2 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800 transition" title="Zen Focus Mode">
+                        <i class="fa-solid fa-expand text-base"></i>
+                    </button>
+                    <button onclick="openVersionHistoryModal()" class="p-2 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800 transition" title="Version History">
+                        <i class="fa-solid fa-clock-rotate-left text-base"></i>
+                    </button>
+                    <button onclick="openAiModal()" class="p-2 text-indigo-400 hover:text-indigo-300 rounded-lg hover:bg-indigo-950/50 border border-indigo-900/50 transition flex items-center gap-1 text-xs font-medium" title="AI Assistant">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> <span class="hidden lg:inline">AI Assistant</span>
+                    </button>
+                    <button onclick="lockVault()" class="p-2 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition ml-1" title="Lock Vault">
+                        <i class="fa-solid fa-lock text-base"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- MIDDLE AREA: SIDEBAR + EDITOR -->
+            <div class="flex-1 flex overflow-hidden relative">
+
+                <!-- SIDEBAR -->
+                <aside id="sidebar" class="w-80 bg-slate-900 border-r border-slate-800/80 flex flex-col shrink-0 transition-all duration-300 z-20 absolute md:static inset-y-0 left-0 -translate-x-full md:translate-x-0 shadow-xl md:shadow-none">
+                    
+                    <!-- Search Bar -->
+                    <div class="p-3 border-b border-slate-800/80">
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
+                            <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Search notes..." 
+                                class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+
+                    <!-- Navigation Filters -->
+                    <div class="px-2 py-2 border-b border-slate-800/60 flex text-xs gap-1">
+                        <button onclick="setFilter('all')" id="filterAll" class="flex-1 py-1 px-2 rounded-md bg-slate-800 text-slate-200 text-center font-medium transition">All</button>
+                        <button onclick="setFilter('favorites')" id="filterFav" class="flex-1 py-1 px-2 rounded-md text-slate-400 hover:text-slate-200 text-center font-medium transition">
+                            <i class="fa-solid fa-star text-amber-400/80 mr-1"></i>Starred
+                        </button>
+                    </div>
+
+                    <!-- Folder Header -->
+                    <div class="px-3 py-2 border-b border-slate-800/60 text-xs flex justify-between items-center text-slate-400">
+                        <span class="font-semibold uppercase tracking-wider text-[10px]">Folders</span>
+                        <button onclick="promptCreateFolder()" class="hover:text-emerald-400"><i class="fa-solid fa-folder-plus"></i></button>
+                    </div>
+                    <div id="folderTreeContainer" class="px-2 py-1 max-h-32 overflow-y-auto border-b border-slate-800/60 text-xs space-y-0.5">
+                    </div>
+
+                    <!-- Tags filter -->
+                    <div id="tagsFilterContainer" class="px-3 py-2 border-b border-slate-800/60 text-xs overflow-x-auto flex gap-1.5 scrollbar-none">
+                    </div>
+
+                    <!-- Note List -->
+                    <div id="noteList" class="flex-1 overflow-y-auto p-2 space-y-1">
+                    </div>
+
+                    <!-- Sidebar Footer Controls -->
+                    <div class="p-3 border-t border-slate-800/80 bg-slate-950/50 space-y-2">
+                        <div class="flex items-center justify-between text-xs text-slate-400">
+                            <button onclick="exportBackup()" class="hover:text-emerald-400 flex items-center gap-1 transition">
+                                <i class="fa-solid fa-download"></i> Backup Vault
+                            </button>
+                            <button onclick="triggerRestoreBackup()" class="hover:text-emerald-400 flex items-center gap-1 transition">
+                                <i class="fa-solid fa-upload"></i> Restore
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- MAIN EDITOR / PREVIEW PANEL -->
+                <main id="mainContentPane" class="flex-1 flex flex-col bg-slate-950 overflow-hidden relative">
+                    <button id="exitZenBtn" onclick="toggleZenMode()" class="hidden absolute top-3 right-3 z-30 bg-slate-800 hover:bg-slate-700 text-slate-200 p-2 rounded-xl text-xs shadow-lg border border-slate-700">
+                        <i class="fa-solid fa-compress mr-1"></i> Exit Zen
+                    </button>
+
+                    <div id="noNoteSelected" class="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-500">
+                        <i class="fa-solid fa-file-pen text-4xl mb-3 text-slate-700"></i>
+                        <p class="text-sm font-medium">No note selected or vault empty.</p>
+                        <button onclick="createNewNote()" class="mt-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold px-4 py-2 rounded-xl transition">
+                            Create First Note
+                        </button>
+                    </div>
+
+                    <div id="editorContainer" class="hidden flex-1 flex flex-col overflow-hidden">
+                        
+                        <!-- Note Title Header -->
+                        <div class="p-4 border-b border-slate-800/80 bg-slate-900/50 flex flex-col gap-2">
+                            <input type="text" id="noteTitleInput" oninput="saveCurrentNote()" placeholder="Note Title..." 
+                                class="bg-transparent text-xl font-bold text-slate-100 placeholder-slate-600 focus:outline-none w-full">
+                            
+                            <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+                                <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+                                    <i class="fa-solid fa-folder-closed text-slate-500"></i>
+                                    <select id="noteFolderSelect" onchange="saveCurrentNote()" class="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-slate-300 focus:outline-none focus:border-emerald-500">
+                                        <option value="">(No Folder)</option>
+                                    </select>
+                                    
+                                    <i class="fa-solid fa-tags text-slate-500 ml-2"></i>
+                                    <input type="text" id="noteTagsInput" oninput="saveCurrentNote()" placeholder="tags (e.g. work, ideas)" 
+                                        class="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-slate-300 placeholder-slate-600 focus:outline-none focus:border-emerald-500 flex-1 max-w-xs">
+                                </div>
+                                <span id="lastSavedLabel" class="text-slate-500 text-[10px] shrink-0">Encrypted Local</span>
+                            </div>
+                        </div>
+
+                        <!-- Mode Switcher Tabs -->
+                        <div class="bg-slate-900 border-b border-slate-800 px-4 py-1.5 flex justify-between items-center text-xs">
+                            <div class="flex items-center space-x-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                                <button onclick="setEditorMode('edit')" id="modeEdit" class="px-3 py-1 rounded-md text-slate-300 bg-slate-800 font-medium transition">Edit</button>
+                                <button onclick="setEditorMode('split')" id="modeSplit" class="px-3 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium transition hidden sm:inline-block">Split</button>
+                                <button onclick="setEditorMode('preview')" id="modePreview" class="px-3 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium transition">Preview</button>
+                            </div>
+
+                            <div class="flex items-center gap-3">
+                                <span id="noteStatsLabel" class="text-slate-500 text-[11px] hidden sm:inline">0 words | 0 min read</span>
+                                <button onclick="deleteCurrentNote()" class="text-slate-500 hover:text-rose-400 p-1 transition" title="Delete Note">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Main Text Area / Preview -->
+                        <div class="flex-1 flex overflow-hidden relative">
+                            <div id="editorPane" class="flex-1 h-full p-4 overflow-y-auto flex flex-col">
+                                <textarea id="markdownTextarea" onkeydown="handleMonacoEditorKeydown(event)" oninput="handleMarkdownInput()" placeholder="Write notes using Markdown... (LaTeX math supported with $...$)" 
+                                    class="w-full flex-1 bg-transparent text-slate-200 placeholder-slate-600 resize-none focus:outline-none font-mono text-sm leading-relaxed"></textarea>
+                            </div>
+
+                            <div id="splitDivider" class="w-px bg-slate-800 hidden"></div>
+
+                            <div id="previewPane" class="flex-1 h-full p-6 overflow-y-auto bg-slate-950 prose max-w-none hidden">
+                                <div id="previewContent"></div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <!-- DEV TOOLS MODAL -->
+        <div id="devToolsModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+            <div class="max-w-xl w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <h3 class="font-bold text-slate-100 flex items-center gap-2"><i class="fa-solid fa-code text-emerald-400"></i> Developer Utilities</h3>
+                    <button onclick="closeDevToolsModal()" class="text-slate-500 hover:text-slate-300"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <button onclick="transformText('json_format')" class="p-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-slate-300 transition">
+                        <strong class="text-emerald-400 block"><i class="fa-solid fa-brackets-curly mr-1"></i>Format JSON</strong>
+                        Pretty print raw JSON text.
+                    </button>
+                    <button onclick="transformText('base64_encode')" class="p-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-slate-300 transition">
+                        <strong class="text-indigo-400 block"><i class="fa-solid fa-key mr-1"></i>Base64 Encode</strong>
+                        Encode note selection.
+                    </button>
+                    <button onclick="transformText('base64_decode')" class="p-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-slate-300 transition">
+                        <strong class="text-indigo-400 block"><i class="fa-solid fa-unlock mr-1"></i>Base64 Decode</strong>
+                        Decode base64 string.
+                    </button>
+                    <button onclick="transformText('url_encode')" class="p-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-slate-300 transition">
+                        <strong class="text-amber-400 block"><i class="fa-solid fa-link mr-1"></i>URL Encode</strong>
+                        Encode URI characters.
+                    </button>
+                </div>
+
+                <div class="pt-3 border-t border-slate-800 flex justify-end">
+                    <button onclick="closeDevToolsModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CODE SANDBOX MODAL -->
+        <div id="sandboxModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+            <div class="max-w-4xl w-full h-[85vh] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+                <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/60">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-play text-emerald-400"></i>
+                        <h3 class="font-bold text-slate-100 text-sm">JS / HTML Live Sandbox Execution</h3>
+                    </div>
+                    <button onclick="closeSandboxModal()" class="text-slate-500 hover:text-slate-300"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
+                <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+                    <div class="flex-1 border-r border-slate-800 p-2 bg-slate-950 flex flex-col">
+                        <span class="text-[10px] uppercase font-bold text-slate-500 px-2 py-1">Source Code</span>
+                        <textarea id="sandboxCodeArea" class="flex-1 w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs font-mono text-slate-200 focus:outline-none resize-none"></textarea>
+                    </div>
+                    <div class="flex-1 flex flex-col bg-slate-900">
+                        <div class="flex-1 relative">
+                            <iframe id="sandboxFrame" class="w-full h-full bg-white rounded-b-none" sandbox="allow-scripts"></iframe>
+                        </div>
+                        <div class="h-32 border-t border-slate-800 bg-slate-950 p-2 flex flex-col">
+                            <span class="text-[10px] uppercase font-bold text-indigo-400 mb-1"><i class="fa-solid fa-terminal mr-1"></i>Console Log</span>
+                            <div id="sandboxConsole" class="flex-1 overflow-y-auto font-mono text-[11px] text-emerald-400 space-y-1 p-1"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3 border-t border-slate-800 bg-slate-950/80 flex justify-between items-center">
+                    <button onclick="clearSandboxConsole()" class="text-slate-400 hover:text-slate-200 text-xs">Clear Console</button>
+                    <button onclick="runSandboxCode()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow">
+                        <i class="fa-solid fa-play"></i> Run Sandbox
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VERSION HISTORY MODAL -->
+        <div id="versionModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+            <div class="max-w-2xl w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <h3 class="font-bold text-slate-100 flex items-center gap-2"><i class="fa-solid fa-code-compare text-emerald-400"></i> Revision Diffs</h3>
+                    <button onclick="closeVersionModal()" class="text-slate-500 hover:text-slate-300"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div id="versionListContainer" class="max-h-36 overflow-y-auto space-y-2 text-xs border-b border-slate-800 pb-3">
+                </div>
+
+                <div class="flex-1 flex flex-col overflow-hidden space-y-2">
+                    <span class="text-xs font-semibold text-slate-400">Selected Revision Diff:</span>
+                    <div id="diffViewerPane" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-xs overflow-y-auto whitespace-pre-wrap leading-relaxed text-slate-300">
+                        <p class="text-slate-600 italic">Select a revision above to compare diffs.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TEMPLATE SELECTION MODAL -->
+        <div id="templateModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+            <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <h3 class="font-bold text-slate-100 flex items-center gap-2"><i class="fa-solid fa-wand-magic text-emerald-400"></i> Insert Template</h3>
+                    <button onclick="closeTemplateModal()" class="text-slate-500 hover:text-slate-300"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div class="space-y-2 text-xs">
+                    <button onclick="applyTemplate('journal')" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 p-3 rounded-xl transition space-y-1">
+                        <strong class="text-emerald-400 block">Daily Journal Entry</strong>
+                        <p class="text-slate-400">Structure with mood, daily goals, reflection, and tasks.</p>
+                    </button>
+                    <button onclick="applyTemplate('meeting')" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 p-3 rounded-xl transition space-y-1">
+                        <strong class="text-emerald-400 block">Meeting Minutes</strong>
+                        <p class="text-slate-400">Attendees, agenda items, key decisions, and action points.</p>
+                    </button>
+                    <button onclick="applyTemplate('project')" class="w-full text-left bg-slate-950 hover:bg-slate-800 border border-slate-800 p-3 rounded-xl transition space-y-1">
+                        <strong class="text-emerald-400 block">Project Blueprint</strong>
+                        <p class="text-slate-400">Scope, architecture, milestone checklists, and references.</p>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI ASSISTANT MODAL -->
+        <div id="aiModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+            <div class="max-w-lg w-full bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i>
+                        <h3 class="font-bold text-slate-100">Gemini AI Assistant</h3>
+                    </div>
+                    <button onclick="closeAiModal()" class="text-slate-500 hover:text-slate-300"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
+
+                <div class="p-4 overflow-y-auto space-y-4 flex-1">
+                    <div class="bg-indigo-950/40 border border-indigo-800/60 rounded-xl p-3 text-xs text-indigo-200 space-y-2">
+                        <div class="flex items-start gap-2">
+                            <i class="fa-solid fa-shield-cat text-indigo-400 text-sm mt-0.5"></i>
+                            <div>
+                                <strong class="text-indigo-300">Privacy Notice:</strong> AI execution will send text payload to Google Gemini API with your explicit approval.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-xs font-semibold text-slate-400">Choose Action</label>
+                        <select id="aiActionSelect" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none">
+                            <option value="summarize">Summarize Note</option>
+                            <option value="grammar">Fix Grammar & Format Markdown</option>
+                            <option value="expand">Brainstorm / Expand Ideas</option>
+                            <option value="action_items">Extract Checklists / Tasks</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs font-semibold text-slate-400">Text Payload Preview:</label>
+                            <span class="text-[10px] text-slate-500" id="aiCharCount">0 chars</span>
+                        </div>
+                        <div id="aiPayloadPreview" class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-300 font-mono max-h-32 overflow-y-auto whitespace-pre-wrap"></div>
+                    </div>
+
+                    <div id="aiOutputContainer" class="hidden space-y-2 pt-2 border-t border-slate-800">
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs font-semibold text-indigo-400">AI Response</label>
+                            <button onclick="applyAiToNote()" class="text-xs text-emerald-400 hover:underline flex items-center gap-1">
+                                <i class="fa-solid fa-file-import"></i> Append to Note
+                            </button>
+                        </div>
+                        <div id="aiOutputText" class="bg-slate-950 border border-indigo-900/40 p-3 rounded-xl text-xs text-slate-200 prose max-w-none"></div>
+                    </div>
+                </div>
+
+                <div class="p-4 border-t border-slate-800 bg-slate-950/50 flex justify-end gap-2">
+                    <button onclick="closeAiModal()" class="px-4 py-2 rounded-xl text-xs text-slate-400 hover:bg-slate-800 font-medium transition">Cancel</button>
+                    <button onclick="requestAiProcessing()" id="aiSubmitBtn" class="px-4 py-2 rounded-xl text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition flex items-center gap-1.5 shadow">
+                        <i class="fa-solid fa-paper-plane"></i> Approve & Send
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <input type="file" id="restoreFileInput" accept=".json" class="hidden" onchange="handleRestoreFile(event)">
+    </div>
+
+    <!-- MAIN APPLICATION SCRIPT -->
+    <script>
+        let masterKey = null;
+        let vaultSalt = null;
+        let notes = [];
+        let newWorker = null;
+
+        // --- PWA SERVICE WORKER & UPDATE REGISTRATION ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Inline blob worker script for offline functionality & update lifecycle tracking
+                const swContent = `
+                    const CACHE_NAME = 'ciphernote-v2';
+                    self.addEventListener('install', (e) => { self.skipWaiting(); });
+                    self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
+                    self.addEventListener('fetch', (e) => {
+                        e.respondWith(
+                            caches.match(e.request).then(res => res || fetch(e.request).catch(() => caches.match('.')))
+                        );
+                    });
+                `;
+                const blob = new Blob([swContent], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+
+                navigator.serviceWorker.register(swUrl).then(reg => {
+                    reg.addEventListener('updatefound', () => {
+                        newWorker = reg.installing;
+                        if (newWorker) {
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    showUpdateBanner();
+                                }
+                            });
+                        }
+                    });
+                }).catch(err => console.log('Service Worker registration skipped or restricted in sandbox mode.'));
+
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (!refreshing) {
+                        refreshing = true;
+                        window.location.reload();
+                    }
+                });
+            });
+        }
+
+        function showUpdateBanner() {
+            const banner = document.getElementById('pwaUpdateBanner');
+            banner.classList.remove('translate-y-24', 'opacity-0', 'pointer-events-none');
+        }
+
+        function dismissUpdateBanner() {
+            const banner = document.getElementById('pwaUpdateBanner');
+            banner.classList.add('translate-y-24', 'opacity-0', 'pointer-events-none');
+        }
+
+        function applyPwaUpdate() {
+            if (newWorker) {
+                newWorker.postMessage({ action: 'skipWaiting' });
+            } else {
+                window.location.reload();
+            }
+        }
+
+        // --- EXISTING VAULT CODE ---
+        let folders = ['Work', 'Personal', 'Projects'];
+        let currentNoteId = null;
+        let activeFilter = 'all';
+        let activeTagFilter = null;
+        let activeFolderFilter = null;
+        let currentMode = 'edit';
+        let saveDebounceTimer = null;
+
+        const STORAGE_VAULT_KEY = 'ciphernote_encrypted_vault';
+        const STORAGE_SALT_KEY = 'ciphernote_vault_salt';
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            checkVaultExists();
+        });
+
+        function checkVaultExists() {
+            const vaultData = localStorage.getItem(STORAGE_VAULT_KEY);
+            const saltData = localStorage.getItem(STORAGE_SALT_KEY);
+
+            if (!vaultData || !saltData) {
+                document.getElementById('setupNotice').classList.remove('hidden');
+                document.getElementById('confirmPasscodeGroup').classList.remove('hidden');
+                document.getElementById('authBtnText').innerText = 'Create Encrypted Vault';
+                document.getElementById('lockSubtitle').innerText = 'First-time Setup Required';
+            } else {
+                document.getElementById('setupNotice').classList.add('hidden');
+                document.getElementById('confirmPasscodeGroup').classList.add('hidden');
+                document.getElementById('authBtnText').innerText = 'Unlock Vault';
+                document.getElementById('lockSubtitle').innerText = 'Zero-Knowledge Encrypted Vault';
+            }
+        }
+
+        async function handleAuthSubmit(e) {
+            e.preventDefault();
+            const passcode = document.getElementById('passcodeInput').value;
+            const confirmPass = document.getElementById('confirmPasscodeInput').value;
+            const errorEl = document.getElementById('authError');
+            errorEl.classList.add('hidden');
+
+            const vaultData = localStorage.getItem(STORAGE_VAULT_KEY);
+            const saltData = localStorage.getItem(STORAGE_SALT_KEY);
+
+            try {
+                if (!vaultData || !saltData) {
+                    if (passcode.length < 6) throw new Error('Passcode must be at least 6 characters.');
+                    if (passcode !== confirmPass) throw new Error('Passcodes do not match.');
+
+                    vaultSalt = window.crypto.getRandomValues(new Uint8Array(16));
+                    masterKey = await deriveKey(passcode, vaultSalt);
+                    notes = [];
+                    
+                    localStorage.setItem(STORAGE_SALT_KEY, JSON.stringify(Array.from(vaultSalt)));
+                    await saveNotesToVault();
+                } else {
+                    vaultSalt = new Uint8Array(JSON.parse(saltData));
+                    masterKey = await deriveKey(passcode, vaultSalt);
+
+                    const decryptedStr = await decryptData(JSON.parse(vaultData), masterKey);
+                    notes = JSON.parse(decryptedStr);
+                }
+
+                document.getElementById('lockScreen').classList.add('hidden');
+                document.getElementById('mainInterface').classList.remove('hidden');
+                
+                renderFolders();
+                renderTagsList();
+                renderNoteList();
+
+                if (notes.length > 0) selectNote(notes[0].id);
+                else showEmptyState();
+
+            } catch (err) {
+                errorEl.innerText = err.message || 'Incorrect passcode or decryption error.';
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        async function deriveKey(passcode, salt) {
+            const encoder = new TextEncoder();
+            const baseKey = await window.crypto.subtle.importKey(
+                'raw', encoder.encode(passcode), { name: 'PBKDF2' }, false, ['deriveKey']
+            );
+            return window.crypto.subtle.deriveKey(
+                { name: 'PBKDF2', salt: salt, iterations: 250000, hash: 'SHA-256' },
+                baseKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+            );
+        }
+
+        async function encryptData(dataString, key) {
+            const encoder = new TextEncoder();
+            const iv = window.crypto.getRandomValues(new Uint8Array(12));
+            const ciphertext = await window.crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv: iv }, key, encoder.encode(dataString)
+            );
+            return { iv: Array.from(iv), data: Array.from(new Uint8Array(ciphertext)) };
+        }
+
+        async function decryptData(encryptedPayload, key) {
+            const decoder = new TextDecoder();
+            const decryptedBuffer = await window.crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv: new Uint8Array(encryptedPayload.iv) },
+                key, new Uint8Array(encryptedPayload.data)
+            );
+            return decoder.decode(decryptedBuffer);
+        }
+
+        async function saveNotesToVault() {
+            if (!masterKey) return;
+            const encryptedObj = await encryptData(JSON.stringify(notes), masterKey);
+            localStorage.setItem(STORAGE_VAULT_KEY, JSON.stringify(encryptedObj));
+        }
+
+        function lockVault() {
+            masterKey = null;
+            notes = [];
+            currentNoteId = null;
+            document.getElementById('passcodeInput').value = '';
+            document.getElementById('confirmPasscodeInput').value = '';
+            document.getElementById('mainInterface').classList.add('hidden');
+            document.getElementById('lockScreen').classList.remove('hidden');
+            checkVaultExists();
+        }
+
+        function renderFolders() {
+            const selectEl = document.getElementById('noteFolderSelect');
+            const treeEl = document.getElementById('folderTreeContainer');
+
+            selectEl.innerHTML = '<option value="">(No Folder)</option>';
+            treeEl.innerHTML = `
+                <div onclick="setFolderFilter(null)" class="p-1.5 rounded-lg flex items-center justify-between cursor-pointer ${!activeFolderFilter ? 'bg-slate-800 text-emerald-400 font-medium' : 'text-slate-400 hover:bg-slate-850'}">
+                    <span><i class="fa-solid fa-folder mr-1.5"></i>All Folders</span>
+                </div>
+            `;
+
+            folders.forEach(folder => {
+                const opt = document.createElement('option');
+                opt.value = folder;
+                opt.innerText = folder;
+                selectEl.appendChild(opt);
+
+                const isActive = activeFolderFilter === folder;
+                const div = document.createElement('div');
+                div.className = `p-1.5 rounded-lg flex items-center justify-between cursor-pointer ${isActive ? 'bg-slate-800 text-emerald-400 font-medium' : 'text-slate-400 hover:bg-slate-850'}`;
+                div.onclick = () => setFolderFilter(folder);
+                div.innerHTML = `<span><i class="fa-solid fa-folder mr-1.5"></i>${escapeHtml(folder)}</span>`;
+                treeEl.appendChild(div);
+            });
+        }
+
+        function promptCreateFolder() {
+            const name = prompt('Folder Name:');
+            if (name && !folders.includes(name)) {
+                folders.push(name);
+                renderFolders();
+            }
+        }
+
+        function setFolderFilter(folder) {
+            activeFolderFilter = folder;
+            renderFolders();
+            renderNoteList();
+        }
+
+        function renderNoteList() {
+            const listEl = document.getElementById('noteList');
+            const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+
+            listEl.innerHTML = '';
+
+            let filtered = notes.filter(note => {
+                if (activeFilter === 'favorites' && !note.favorite) return false;
+                if (activeFolderFilter && note.folder !== activeFolderFilter) return false;
+                if (activeTagFilter && (!note.tags || !note.tags.includes(activeTagFilter))) return false;
+                if (searchQuery) {
+                    const matchTitle = note.title.toLowerCase().includes(searchQuery);
+                    const matchContent = note.content.toLowerCase().includes(searchQuery);
+                    if (!matchTitle && !matchContent) return false;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `<div class="text-center py-8 text-xs text-slate-500">No matching notes</div>`;
+                return;
+            }
+
+            filtered.sort((a, b) => b.updatedAt - a.updatedAt).forEach(note => {
+                const isSelected = note.id === currentNoteId;
+                const item = document.createElement('div');
+                item.className = `p-3 rounded-xl cursor-pointer transition flex flex-col gap-1 border ${isSelected ? 'bg-slate-800/90 border-emerald-500/50 text-slate-100' : 'bg-slate-900/40 border-slate-800/60 text-slate-400 hover:bg-slate-850'}`;
+                item.onclick = () => selectNote(note.id);
+
+                item.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <strong class="text-xs truncate font-semibold text-slate-200">${escapeHtml(note.title || 'Untitled')}</strong>
+                        ${note.favorite ? '<i class="fa-solid fa-star text-amber-400 text-[10px]"></i>' : ''}
+                    </div>
+                    <p class="text-[11px] text-slate-500 truncate">${escapeHtml(note.content.substring(0, 50)) || 'Empty note...'}</p>
+                    <div class="flex justify-between items-center text-[10px] text-slate-600 mt-1">
+                        <span>${new Date(note.updatedAt).toLocaleDateString()}</span>
+                        <span class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">${escapeHtml(note.folder || 'Unfiled')}</span>
+                    </div>
+                `;
+                listEl.appendChild(item);
+            });
+        }
+
+        function renderTagsList() {
+            const container = document.getElementById('tagsFilterContainer');
+            const allTags = new Set();
+            notes.forEach(n => n.tags && n.tags.forEach(t => allTags.add(t)));
+
+            if (allTags.size === 0) {
+                container.classList.add('hidden');
+                return;
+            }
+            container.classList.remove('hidden');
+
+            let html = `<button onclick="setTagFilter(null)" class="px-2 py-0.5 rounded-full text-[10px] ${!activeTagFilter ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-slate-800 text-slate-400'}">All Tags</button>`;
+            
+            allTags.forEach(tag => {
+                const isActive = activeTagFilter === tag;
+                html += `<button onclick="setTagFilter('${escapeHtml(tag)}')" class="px-2 py-0.5 rounded-full text-[10px] shrink-0 ${isActive ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-slate-800 text-slate-400'}">#${escapeHtml(tag)}</button>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function selectNote(id) {
+            currentNoteId = id;
+            const note = notes.find(n => n.id === id);
+            if (!note) return showEmptyState();
+
+            document.getElementById('noNoteSelected').classList.add('hidden');
+            document.getElementById('editorContainer').classList.remove('hidden');
+
+            document.getElementById('noteTitleInput').value = note.title;
+            document.getElementById('noteFolderSelect').value = note.folder || '';
+            document.getElementById('noteTagsInput').value = (note.tags || []).join(', ');
+            document.getElementById('markdownTextarea').value = note.content;
+
+            updateFavoriteIcon(note.favorite);
+            updateWordStats();
+            renderMarkdownPreview();
+            renderNoteList();
+        }
+
+        function createNewNote() {
+            const newNote = {
+                id: generateId(),
+                title: 'Untitled Note',
+                content: '',
+                folder: activeFolderFilter || '',
+                tags: [],
+                favorite: false,
+                history: [],
+                updatedAt: Date.now()
+            };
+            notes.unshift(newNote);
+            saveNotesToVault();
+            renderTagsList();
+            selectNote(newNote.id);
+        }
+
+        function saveCurrentNote() {
+            if (!currentNoteId) return;
+            const note = notes.find(n => n.id === currentNoteId);
+            if (!note) return;
+
+            if (!note.history) note.history = [];
+            if (note.content !== document.getElementById('markdownTextarea').value && Math.random() < 0.2) {
+                note.history.unshift({ timestamp: Date.now(), content: note.content });
+                if (note.history.length > 10) note.history.pop();
+            }
+
+            note.title = document.getElementById('noteTitleInput').value;
+            note.folder = document.getElementById('noteFolderSelect').value;
+            note.content = document.getElementById('markdownTextarea').value;
+            
+            const rawTags = document.getElementById('noteTagsInput').value;
+            note.tags = rawTags.split(',').map(t => t.trim().replace(/^#/, '')).filter(t => t.length > 0);
+            note.updatedAt = Date.now();
+
+            updateWordStats();
+            saveNotesToVault();
+            renderTagsList();
+            renderNoteList();
+        }
+
+        function deleteCurrentNote() {
+            if (!currentNoteId) return;
+            if (confirm('Delete this note permanently?')) {
+                notes = notes.filter(n => n.id !== currentNoteId);
+                saveNotesToVault();
+                renderTagsList();
+                if (notes.length > 0) selectNote(notes[0].id);
+                else showEmptyState();
+            }
+        }
+
+        function toggleFavoriteCurrent() {
+            if (!currentNoteId) return;
+            const note = notes.find(n => n.id === currentNoteId);
+            if (note) {
+                note.favorite = !note.favorite;
+                updateFavoriteIcon(note.favorite);
+                saveNotesToVault();
+                renderNoteList();
+            }
+        }
+
+        function updateFavoriteIcon(isFav) {
+            document.getElementById('favoriteBtn').innerHTML = isFav 
+                ? '<i class="fa-solid fa-star text-amber-400 text-base"></i>' 
+                : '<i class="fa-regular fa-star text-base"></i>';
+        }
+
+        function showEmptyState() {
+            document.getElementById('noNoteSelected').classList.remove('hidden');
+            document.getElementById('editorContainer').classList.add('hidden');
+            currentNoteId = null;
+        }
+
+        function updateWordStats() {
+            const text = document.getElementById('markdownTextarea').value.trim();
+            const words = text ? text.split(/\s+/).length : 0;
+            const readTime = Math.ceil(words / 200);
+            document.getElementById('noteStatsLabel').innerText = `${words} words | ~${readTime} min read`;
+        }
+
+        function handleMonacoEditorKeydown(e) {
+            const textarea = e.target;
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                if (!e.shiftKey) {
+                    textarea.value = textarea.value.substring(0, start) + "    " + textarea.value.substring(end);
+                    textarea.selectionStart = textarea.selectionEnd = start + 4;
+                } else {
+                    if (textarea.value.substring(start - 4, start) === "    ") {
+                        textarea.value = textarea.value.substring(0, start - 4) + textarea.value.substring(end);
+                        textarea.selectionStart = textarea.selectionEnd = start - 4;
+                    }
+                }
+                handleMarkdownInput();
+                return;
+            }
+
+            const autoPairs = { '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`' };
+            if (autoPairs[e.key] && start === end) {
+                e.preventDefault();
+                const closeChar = autoPairs[e.key];
+                textarea.value = textarea.value.substring(0, start) + e.key + closeChar + textarea.value.substring(end);
+                textarea.selectionStart = textarea.selectionEnd = start + 1;
+                handleMarkdownInput();
+            }
+        }
+
+        function handleMarkdownInput() {
+            if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
+            saveDebounceTimer = setTimeout(() => {
+                saveCurrentNote();
+            }, 300);
+            renderMarkdownPreview();
+        }
+
+        function renderMarkdownPreview() {
+            const rawText = document.getElementById('markdownTextarea').value;
+            const previewEl = document.getElementById('previewContent');
+            
+            let parsedHtml = marked.parse(rawText);
+
+            parsedHtml = parsedHtml.replace(/\$([^\$]+)\$/g, (match, math) => {
+                try {
+                    return katex.renderToString(math, { throwOnError: false });
+                } catch (e) {
+                    return match;
+                }
+            });
+
+            previewEl.innerHTML = parsedHtml;
+
+            previewEl.querySelectorAll('pre code').forEach((codeBlock) => {
+                const pre = codeBlock.parentNode;
+                if (!pre.parentNode.classList.contains('code-block-wrapper')) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'code-block-wrapper';
+                    
+                    const header = document.createElement('div');
+                    header.className = 'code-block-header';
+                    header.innerHTML = `
+                        <span>Code Snippet</span>
+                        <div class="flex items-center gap-2">
+                            <button onclick="openSandboxWithCode('${encodeURIComponent(codeBlock.innerText)}')" class="hover:text-emerald-400"><i class="fa-solid fa-play mr-1"></i>Run</button>
+                            <button onclick="copySnippetText(this)" class="hover:text-emerald-400"><i class="fa-solid fa-copy mr-1"></i>Copy</button>
+                        </div>
+                    `;
+                    
+                    pre.parentNode.insertBefore(wrapper, pre);
+                    wrapper.appendChild(header);
+                    wrapper.appendChild(pre);
+                }
+            });
+
+            if (window.Prism) Prism.highlightAllUnder(previewEl);
+        }
+
+        function copySnippetText(btn) {
+            const code = btn.closest('.code-block-wrapper').querySelector('code').innerText;
+            navigator.clipboard.writeText(code).then(() => {
+                btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400 mr-1"></i>Copied`;
+                setTimeout(() => { btn.innerHTML = `<i class="fa-solid fa-copy mr-1"></i>Copy`; }, 2000);
+            });
+        }
+
+        function setEditorMode(mode) {
+            currentMode = mode;
+            const editorPane = document.getElementById('editorPane');
+            const previewPane = document.getElementById('previewPane');
+            const splitDivider = document.getElementById('splitDivider');
+
+            ['modeEdit', 'modeSplit', 'modePreview'].forEach(id => {
+                document.getElementById(id).className = 'px-3 py-1 rounded-md text-slate-400 hover:text-slate-200 font-medium transition';
+            });
+
+            if (mode === 'edit') {
+                document.getElementById('modeEdit').className = 'px-3 py-1 rounded-md text-slate-300 bg-slate-800 font-medium transition';
+                editorPane.classList.remove('hidden');
+                previewPane.classList.add('hidden');
+                splitDivider.classList.add('hidden');
+            } else if (mode === 'preview') {
+                document.getElementById('modePreview').className = 'px-3 py-1 rounded-md text-slate-300 bg-slate-800 font-medium transition';
+                editorPane.classList.add('hidden');
+                previewPane.classList.remove('hidden');
+                splitDivider.classList.add('hidden');
+                renderMarkdownPreview();
+            } else if (mode === 'split') {
+                document.getElementById('modeSplit').className = 'px-3 py-1 rounded-md text-slate-300 bg-slate-800 font-medium transition';
+                editorPane.classList.remove('hidden');
+                previewPane.classList.remove('hidden');
+                splitDivider.classList.remove('hidden');
+                renderMarkdownPreview();
+            }
+        }
+
+        function toggleZenMode() {
+            const sidebar = document.getElementById('sidebar');
+            const exitBtn = document.getElementById('exitZenBtn');
+            const isZen = exitBtn.classList.contains('hidden');
+
+            if (isZen) {
+                sidebar.classList.add('hidden');
+                exitBtn.classList.remove('hidden');
+            } else {
+                sidebar.classList.remove('hidden');
+                exitBtn.classList.add('hidden');
+            }
+        }
+
+        function openDevToolsModal() { document.getElementById('devToolsModal').classList.remove('hidden'); }
+        function closeDevToolsModal() { document.getElementById('devToolsModal').classList.add('hidden'); }
+
+        function transformText(action) {
+            const textarea = document.getElementById('markdownTextarea');
+            let val = textarea.value;
+
+            try {
+                if (action === 'json_format') {
+                    val = JSON.stringify(JSON.parse(val), null, 2);
+                } else if (action === 'base64_encode') {
+                    val = btoa(val);
+                } else if (action === 'base64_decode') {
+                    val = atob(val);
+                } else if (action === 'url_encode') {
+                    val = encodeURIComponent(val);
+                }
+                textarea.value = val;
+                handleMarkdownInput();
+                closeDevToolsModal();
+            } catch (err) {
+                alert('Transformation Error: ' + err.message);
+            }
+        }
+
+        function openSandboxWithCode(rawCode) {
+            document.getElementById('sandboxCodeArea').value = decodeURIComponent(rawCode);
+            document.getElementById('sandboxModal').classList.remove('hidden');
+            clearSandboxConsole();
+            runSandboxCode();
+        }
+
+        function closeSandboxModal() { document.getElementById('sandboxModal').classList.add('hidden'); }
+        function clearSandboxConsole() { document.getElementById('sandboxConsole').innerHTML = ''; }
+
+        function runSandboxCode() {
+            const code = document.getElementById('sandboxCodeArea').value;
+            const iframe = document.getElementById('sandboxFrame');
+            
+            const sandboxScript = `
+                <!DOCTYPE html>
+                <html>
+                <head><style>body { font-family: sans-serif; padding: 10px; color: #333; }</style></head>
+                <body>
+                    <div id="root"></div>
+                    <script>
+                        const _log = console.log;
+                        console.log = function(...args) {
+                            _log(...args);
+                            window.parent.postMessage({ type: 'CONSOLE_LOG', data: args.join(' ') }, '*');
+                        };
+                        try {
+                            ${code}
+                        } catch(err) {
+                            console.log('Error: ' + err.message);
+                        }
+                    <\/script>
+                </body>
+                </html>
+            `;
+
+            iframe.srcdoc = sandboxScript;
+        }
+
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'CONSOLE_LOG') {
+                const consoleDiv = document.getElementById('sandboxConsole');
+                const logItem = document.createElement('div');
+                logItem.innerText = `> ${event.data.data}`;
+                consoleDiv.appendChild(logItem);
+            }
+        });
+
+        function openVersionHistoryModal() {
+            const note = notes.find(n => n.id === currentNoteId);
+            if (!note) return;
+
+            const container = document.getElementById('versionListContainer');
+            container.innerHTML = '';
+
+            if (!note.history || note.history.length === 0) {
+                container.innerHTML = `<div class="text-slate-500 text-center py-4">No previous revisions recorded.</div>`;
+            } else {
+                note.history.forEach((snap, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'p-3 bg-slate-950 border border-slate-800 rounded-xl flex justify-between items-center cursor-pointer hover:border-emerald-500/50';
+                    div.onclick = () => renderDiffView(idx);
+                    div.innerHTML = `
+                        <div>
+                            <strong class="text-slate-200 block">${new Date(snap.timestamp).toLocaleString()}</strong>
+                            <span class="text-slate-500 text-[10px]">${escapeHtml(snap.content.slice(0, 35))}...</span>
+                        </div>
+                        <button onclick="event.stopPropagation(); restoreSnapshot(${idx})" class="text-emerald-400 hover:underline text-xs">Restore</button>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+
+            document.getElementById('versionModal').classList.remove('hidden');
+        }
+
+        function renderDiffView(snapIndex) {
+            const note = notes.find(n => n.id === currentNoteId);
+            if (!note || !note.history[snapIndex]) return;
+
+            const oldText = note.history[snapIndex].content;
+            const newText = note.content;
+
+            const dmp = new diff_match_patch();
+            const diffs = dmp.diff_main(oldText, newText);
+            dmp.diff_cleanupSemantic(diffs);
+
+            let html = '';
+            diffs.forEach(part => {
+                const flag = part[0];
+                const text = escapeHtml(part[1]);
+                if (flag === 1) html += `<span class="diff-add">${text}</span>`;
+                else if (flag === -1) html += `<span class="diff-del">${text}</span>`;
+                else html += text;
+            });
+
+            document.getElementById('diffViewerPane').innerHTML = html;
+        }
+
+        function restoreSnapshot(idx) {
+            const note = notes.find(n => n.id === currentNoteId);
+            if (note && note.history[idx]) {
+                note.content = note.history[idx].content;
+                document.getElementById('markdownTextarea').value = note.content;
+                handleMarkdownInput();
+                closeVersionModal();
+            }
+        }
+
+        function closeVersionModal() { document.getElementById('versionModal').classList.add('hidden'); }
+
+        function openTemplateModal() { document.getElementById('templateModal').classList.remove('hidden'); }
+        function closeTemplateModal() { document.getElementById('templateModal').classList.add('hidden'); }
+
+        function applyTemplate(type) {
+            if (!currentNoteId) createNewNote();
+            const textarea = document.getElementById('markdownTextarea');
+
+            if (type === 'journal') {
+                textarea.value = `# Daily Journal - ${new Date().toLocaleDateString()}\n\n### Mood / Energy\n- [ ] Morning Reflection:\n\n### Daily Goals\n- [ ] Goal 1\n- [ ] Goal 2\n\n### Gratitude\n1. `;
+            } else if (type === 'meeting') {
+                textarea.value = `# Meeting Minutes: [Topic]\n**Date:** ${new Date().toLocaleDateString()}\n**Attendees:** \n\n### Agenda\n1. Item 1\n\n### Key Decisions\n- Decision 1\n\n### Action Items\n- [ ] Action Task 1`;
+            } else if (type === 'project') {
+                textarea.value = `# Project Blueprint\n\n### Objective\nBrief summary...\n\n### Architecture / Tech Stack\n- \n\n### Key Milestones\n- [ ] Phase 1 Launch`;
+            }
+
+            closeTemplateModal();
+            handleMarkdownInput();
+        }
+
+        function handleSearch() { renderNoteList(); }
+        function setFilter(type) { activeFilter = type; renderNoteList(); }
+        function setTagFilter(tag) { activeTagFilter = tag; renderTagsList(); renderNoteList(); }
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('-translate-x-full'); }
+
+        function exportBackup() {
+            const vaultData = localStorage.getItem(STORAGE_VAULT_KEY);
+            const saltData = localStorage.getItem(STORAGE_SALT_KEY);
+            if (!vaultData || !saltData) return alert('No encrypted vault data found.');
+
+            const blob = new Blob([JSON.stringify({ version: 1, app: 'CipherNote', salt: JSON.parse(saltData), vault: JSON.parse(vaultData) }, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `ciphernote-vault-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+        }
+
+        function triggerRestoreBackup() { document.getElementById('restoreFileInput').click(); }
+
+        function handleRestoreFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                try {
+                    const obj = JSON.parse(evt.target.result);
+                    if (obj.app !== 'CipherNote') throw new Error('Invalid backup file.');
+                    localStorage.setItem(STORAGE_SALT_KEY, JSON.stringify(obj.salt));
+                    localStorage.setItem(STORAGE_VAULT_KEY, JSON.stringify(obj.vault));
+                    alert('Vault restored! Unlock with the backup passcode.');
+                    lockVault();
+                } catch (err) { alert('Restore error: ' + err.message); }
+            };
+            reader.readAsText(file);
+        }
+
+        function openAiModal() {
+            const note = notes.find(n => n.id === currentNoteId);
+            const payloadText = note ? note.content : '';
+            document.getElementById('aiPayloadPreview').innerText = payloadText || '(Empty note content)';
+            document.getElementById('aiCharCount').innerText = `${payloadText.length} chars`;
+            document.getElementById('aiOutputContainer').classList.add('hidden');
+            document.getElementById('aiModal').classList.remove('hidden');
+        }
+
+        function closeAiModal() { document.getElementById('aiModal').classList.add('hidden'); }
+
+        async function requestAiProcessing() {
+            const note = notes.find(n => n.id === currentNoteId);
+            if (!note || !note.content.trim()) return alert('Note content is empty.');
+
+            const action = document.getElementById('aiActionSelect').value;
+            const submitBtn = document.getElementById('aiSubmitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processing...`;
+
+            let userPrompt = "";
+            if (action === 'summarize') userPrompt = `Summarize in markdown bullet points:\n\n${note.content}`;
+            else if (action === 'grammar') userPrompt = `Fix grammar and reformat cleanly in markdown:\n\n${note.content}`;
+            else if (action === 'expand') userPrompt = `Brainstorm next steps and expand ideas for:\n\n${note.content}`;
+            else if (action === 'action_items') userPrompt = `Extract action items as Markdown checkboxes (- [ ]):\n\n${note.content}`;
+
+            try {
+                const apiKey = "";
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: userPrompt }] }] })
+                });
+
+                const result = await response.json();
+                const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text || "No response.";
+
+                const container = document.getElementById('aiOutputContainer');
+                const output = document.getElementById('aiOutputText');
+                container.classList.remove('hidden');
+                output.innerHTML = marked.parse(aiText);
+                output.dataset.rawText = aiText;
+            } catch (err) {
+                console.error(err);
+                alert('Gemini API Error.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Approve & Send`;
+            }
+        }
+
+        function applyAiToNote() {
+            const rawText = document.getElementById('aiOutputText').dataset.rawText;
+            if (!rawText || !currentNoteId) return;
+            const note = notes.find(n => n.id === currentNoteId);
+            if (note) {
+                note.content += `\n\n---\n### AI Output:\n${rawText}`;
+                document.getElementById('markdownTextarea').value = note.content;
+                handleMarkdownInput();
+                closeAiModal();
+            }
+        }
+
+        function togglePasscodeVisibility(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            input.type = input.type === 'password' ? 'text' : 'password';
+            icon.className = input.type === 'password' ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+        }
+
+        function generateId() { return Date.now().toString(36) + Math.random().toString(36).substring(2, 6); }
+        function escapeHtml(str) { return str ? str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ''; }
+    </script>
+</body>
+</html>
