@@ -1,0 +1,22 @@
+{
+  "name": "CipherNote - Private Encrypted Notes",
+  "short_name": "CipherNote",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "description": "Private encrypted notes that work offline.",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+CipherNote Accounts + encrypted cloud sync
+
+FILES
+- index.html: account screen + existing CipherNote vault
+- supabase-config.js: Supabase project URL and browser anon/publishable key
+- SUPABASE-SETUP.sql: database table + per-user row security policies
+- manifest.json, service-worker.js, icon-192.png, icon-512.png: PWA files
+
+BACKEND SETUP
+1. Create a project at https://supabase.com/ and open Project Settings > API.
+2. Edit supabase-config.js and replace the placeholder URL and anon/publishable key. Never use the service_role/secret key in browser code.
+3. In Supabase SQL Editor, run all of SUPABASE-SETUP.sql. Row-level security restricts each signed-in user to their own row.
+4. In Authentication > URL Configuration, set Site URL to your GitHub Pages URL, e.g. https://tulsiramchess-prog.github.io/CipherNote/ and add that exact URL to Redirect URLs.
+5. In Authentication > Providers, enable Email. Configure Google OAuth by creating OAuth credentials in Google Cloud Console, setting the authorized redirect URI shown by Supabase, and enabling Google in Supabase. Add the GitHub Pages URL to the Google OAuth authorized JavaScript origins if requested.
+6. Upload all files in this folder to the ROOT of your CipherNote GitHub repository, replacing matching app files and adding new setup files.
+7. Open the site online once. Sign in/create account, then unlock with the existing Master Passcode.
+
+EXISTING NOTES / ENCRYPTION
+- Existing notes stay in this browser's localStorage; this update does not delete or migrate them automatically. Export an encrypted backup first.
+- On a newly signed-in device, the encrypted vault and salt are downloaded if that device has no local vault. Use the same Master Passcode to decrypt it.
+- The full vault is encrypted in the browser with the existing AES-GCM key before cloud upload. Supabase stores ciphertext and salt, not readable note text.
+- Existing local vault syncs to cloud after the next successful note save while signed in and online. If both local and cloud vaults already exist, local is not overwritten on login; save a note after login to upload local vault.
+- This is whole-vault sync, not live per-note merge. Concurrent edits on multiple devices can overwrite each other; sync after edits and keep encrypted backups.
+- Offline use: choose Continue offline, then unlock your local vault. Cloud sync and sign-in require internet. Browser must have opened the site at least once online for app resources to be cached.
+- Email confirmation may be enabled by default in Supabase; users may need to confirm their email before first sign-in.
+
+SECURITY
+Never publish a Supabase service_role key. Keep your master passcode private; there is no server-side way to recover encrypted note contents without it. Test with a separate account before relying on this for important notes.
